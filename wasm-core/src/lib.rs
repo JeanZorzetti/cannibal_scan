@@ -1,3 +1,4 @@
+pub mod overlaps;
 pub mod parser;
 pub mod types;
 
