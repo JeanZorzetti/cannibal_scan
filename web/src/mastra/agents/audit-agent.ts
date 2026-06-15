@@ -7,7 +7,7 @@ import type { AuditModel } from "@/lib/audit/run-audit";
 // The cheap, structured-output-friendly model chosen for this slice. Overridable
 // via env so the model can be swapped without code changes.
 export const AUDIT_MODEL_ID =
-  process.env.AUDIT_MODEL ?? "google/gemini-2.0-flash-001";
+  process.env.AUDIT_MODEL ?? "google/gemini-2.5-flash";
 
 const PERSONA = [
   "You are a precise SEO content cannibalization auditor.",
