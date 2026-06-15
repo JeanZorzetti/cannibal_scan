@@ -1,0 +1,10 @@
+# Rust
+/wasm-core/target
+/wasm-core/pkg
+# Node / Next
+/web/node_modules
+/web/.next
+/web/out
+# OS
+Thumbs.db
+.DS_Store
