@@ -61,6 +61,28 @@ fn score_is_symmetric() {
 }
 
 #[test]
+fn weights_title_over_body() {
+    // Two pages sharing ONLY the title (disjoint bodies)...
+    let title_share = corpus(vec![
+        page("https://a.com", "shared alpha beta", "", "", "uno dos tres"),
+        page("https://b.com", "shared alpha beta", "", "", "cuatro cinco seis"),
+    ]);
+    // ...vs two pages sharing ONLY the body (disjoint titles), same shape.
+    let body_share = corpus(vec![
+        page("https://c.com", "tigre leon puma", "", "", "common gamma delta"),
+        page("https://d.com", "aguila halcon cuervo", "", "", "common gamma delta"),
+    ]);
+
+    let title_score = find_overlaps(&title_share, 0.0).pairs[0].score;
+    let body_score = find_overlaps(&body_share, 0.0).pairs[0].score;
+
+    assert!(
+        title_score > body_score,
+        "title overlap ({title_score}) should outrank body overlap ({body_score})"
+    );
+}
+
+#[test]
 fn counts_compared_pairs() {
     let c = corpus(vec![
         page("https://a.com", "A", "A", "", "alpha"),

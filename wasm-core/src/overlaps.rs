@@ -1,6 +1,13 @@
 use crate::types::{Corpus, OverlapPair, OverlapReport, Page};
 use std::collections::HashMap;
 
+// Field weights: SEO cannibalization is driven more by title/h1 intent than by
+// body copy. A token's field weight is how many times it enters the TF bag.
+const TITLE_WEIGHT: usize = 3;
+const H1_WEIGHT: usize = 2;
+const META_WEIGHT: usize = 1;
+const TEXT_WEIGHT: usize = 1;
+
 /// Lowercase, split on any non-alphanumeric char, drop empty tokens.
 fn tokenize(s: &str) -> impl Iterator<Item = String> + '_ {
     s.split(|c: char| !c.is_alphanumeric())
@@ -8,11 +15,22 @@ fn tokenize(s: &str) -> impl Iterator<Item = String> + '_ {
         .map(|t| t.to_lowercase())
 }
 
-/// Bag of tokens for one page. Task 2: every field contributes with equal weight.
+/// Weighted bag of tokens for one page: each field's tokens are repeated by the
+/// field weight, so title/h1 matches count more than body matches in the TF.
 fn page_tokens(page: &Page) -> Vec<String> {
     let mut bag = Vec::new();
-    for field in [&page.title, &page.h1, &page.meta, &page.text] {
-        bag.extend(tokenize(field));
+    let weighted = [
+        (&page.title, TITLE_WEIGHT),
+        (&page.h1, H1_WEIGHT),
+        (&page.meta, META_WEIGHT),
+        (&page.text, TEXT_WEIGHT),
+    ];
+    for (field, weight) in weighted {
+        for tok in tokenize(field) {
+            for _ in 0..weight {
+                bag.push(tok.clone());
+            }
+        }
     }
     bag
 }
