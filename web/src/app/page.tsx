@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { parseCsv, findOverlaps } from "@/lib/wasm";
-import type { Corpus, OverlapReport } from "@/lib/types";
+import type { Corpus, OverlapReport, AuditResponse } from "@/lib/types";
 
 export default function Home() {
   const [bytes, setBytes] = useState<Uint8Array | null>(null);
@@ -10,6 +10,11 @@ export default function Home() {
   const [threshold, setThreshold] = useState(0.7);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // Slice 3 — prioritized audit from the Mastra agent.
+  const [audit, setAudit] = useState<AuditResponse | null>(null);
+  const [auditBusy, setAuditBusy] = useState(false);
+  const [auditError, setAuditError] = useState<string | null>(null);
 
   async function handleFile(file: File) {
     setBusy(true);
@@ -28,9 +33,12 @@ export default function Home() {
     }
   }
 
-  // Re-run the cannibalization scan whenever the file or threshold changes.
+  // Re-run the cannibalization scan whenever the file or threshold changes. Any
+  // prior audit is stale once the pairs change, so clear it.
   useEffect(() => {
     if (!bytes) return;
+    setAudit(null);
+    setAuditError(null);
     let cancelled = false;
     findOverlaps(bytes, threshold)
       .then((r) => {
@@ -44,9 +52,37 @@ export default function Home() {
     };
   }, [bytes, threshold]);
 
+  // Send the pairs (+ trimmed page metadata for the clustered URLs) to the agent.
+  async function requestAudit() {
+    if (!report || !corpus) return;
+    setAuditBusy(true);
+    setAuditError(null);
+    setAudit(null);
+    try {
+      const pairUrls = new Set(report.pairs.flatMap((p) => [p.a, p.b]));
+      const pages = corpus.pages
+        .filter((p) => pairUrls.has(p.url))
+        .map(({ url, title, h1, meta }) => ({ url, title, h1, meta }));
+      const res = await fetch("/api/audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ report, pages }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+      setAudit((await res.json()) as AuditResponse);
+    } catch (e) {
+      setAuditError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setAuditBusy(false);
+    }
+  }
+
   return (
     <main className="mx-auto max-w-5xl p-8">
-      <h1 className="mb-4 text-2xl font-bold">CannibalScan — Slice 2</h1>
+      <h1 className="mb-4 text-2xl font-bold">CannibalScan — Slice 3</h1>
 
       <label
         onDragOver={(e) => e.preventDefault()}
@@ -156,6 +192,88 @@ export default function Home() {
                 Nenhum par acima do limiar.
               </p>
             )
+          )}
+        </section>
+      )}
+
+      {report && report.pairs.length > 0 && (
+        <section className="mt-8" data-testid="audit-section">
+          <div className="mb-3 flex flex-wrap items-center gap-3">
+            <h2 className="text-lg font-semibold">Auditoria priorizada</h2>
+            <button
+              type="button"
+              data-testid="audit-btn"
+              onClick={requestAudit}
+              disabled={auditBusy}
+              className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50"
+            >
+              Explicar/recomendar
+            </button>
+            {auditBusy && (
+              <span className="text-sm text-gray-600" data-testid="audit-busy">
+                Analisando…
+              </span>
+            )}
+          </div>
+
+          {auditError && (
+            <p className="mb-3 text-sm text-red-600" data-testid="audit-error">
+              Auditoria indisponível: {auditError} (os pares acima continuam válidos)
+            </p>
+          )}
+
+          {audit && (
+            <>
+              <ul className="space-y-3" data-testid="audit">
+                {audit.items.map((item) => (
+                  <li
+                    key={item.keep}
+                    data-testid="audit-row"
+                    className="rounded-lg border p-4 text-sm"
+                  >
+                    <div className="mb-2">
+                      <span className="rounded bg-amber-100 px-2 py-0.5 font-mono text-xs text-amber-800">
+                        prioridade {item.priority}
+                      </span>
+                    </div>
+                    <p>
+                      <span className="text-gray-500">Manter (canônica): </span>
+                      <span className="font-medium text-green-700">
+                        {item.keep}
+                      </span>
+                    </p>
+                    {item.merge_or_redirect.length > 0 && (
+                      <p className="mt-1">
+                        <span className="text-gray-500">
+                          Fundir/redirecionar:{" "}
+                        </span>
+                        {item.merge_or_redirect.map((u, i) => (
+                          <span key={u}>
+                            {i > 0 && ", "}
+                            <span className="text-red-600 line-through">{u}</span>
+                          </span>
+                        ))}
+                      </p>
+                    )}
+                    <p className="mt-2">
+                      <span className="text-gray-500">Título: </span>
+                      {item.consolidated_title}
+                    </p>
+                    <p>
+                      <span className="text-gray-500">Meta: </span>
+                      {item.consolidated_meta}
+                    </p>
+                    <p className="mt-2 text-gray-600">{item.rationale}</p>
+                  </li>
+                ))}
+              </ul>
+              <p
+                className="mt-2 text-xs text-gray-400"
+                data-testid="audit-model"
+              >
+                modelo: {audit.model}
+              </p>
+            </>
           )}
         </section>
       )}

@@ -23,3 +23,6 @@ export interface OverlapReport {
   pairs: OverlapPair[];
   compared: number; // page pairs compared = n*(n-1)/2
 }
+
+// Slice 3 audit contract (validation source lives in ./audit/schema).
+export type { AuditItem, AuditReport, AuditResponse } from "./audit/schema";
