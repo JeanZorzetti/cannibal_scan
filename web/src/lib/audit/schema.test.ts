@@ -19,7 +19,8 @@ describe("parseAuditReport", () => {
   });
 
   it("rejects a report with a missing required field", () => {
-    const { rationale: _omit, ...incomplete } = validItem;
+    const incomplete: Partial<typeof validItem> = { ...validItem };
+    delete incomplete.rationale;
     expect(() => parseAuditReport({ items: [incomplete] })).toThrow();
   });
 
