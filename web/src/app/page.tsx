@@ -1,10 +1,13 @@
 "use client";
-import { useState } from "react";
-import { parseCsv } from "@/lib/wasm";
-import type { Corpus } from "@/lib/types";
+import { useEffect, useState } from "react";
+import { parseCsv, findOverlaps } from "@/lib/wasm";
+import type { Corpus, OverlapReport } from "@/lib/types";
 
 export default function Home() {
+  const [bytes, setBytes] = useState<Uint8Array | null>(null);
   const [corpus, setCorpus] = useState<Corpus | null>(null);
+  const [report, setReport] = useState<OverlapReport | null>(null);
+  const [threshold, setThreshold] = useState(0.7);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -12,19 +15,38 @@ export default function Home() {
     setBusy(true);
     setError(null);
     try {
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      setCorpus(await parseCsv(bytes));
+      const b = new Uint8Array(await file.arrayBuffer());
+      setCorpus(await parseCsv(b));
+      setBytes(b); // triggers the overlap scan via the effect below
     } catch (e) {
       setCorpus(null);
+      setBytes(null);
+      setReport(null);
       setError(String(e));
     } finally {
       setBusy(false);
     }
   }
 
+  // Re-run the cannibalization scan whenever the file or threshold changes.
+  useEffect(() => {
+    if (!bytes) return;
+    let cancelled = false;
+    findOverlaps(bytes, threshold)
+      .then((r) => {
+        if (!cancelled) setReport(r);
+      })
+      .catch((e) => {
+        if (!cancelled) setError(String(e));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [bytes, threshold]);
+
   return (
     <main className="mx-auto max-w-5xl p-8">
-      <h1 className="mb-4 text-2xl font-bold">CannibalScan — Slice 1</h1>
+      <h1 className="mb-4 text-2xl font-bold">CannibalScan — Slice 2</h1>
 
       <label
         onDragOver={(e) => e.preventDefault()}
@@ -80,6 +102,61 @@ export default function Home() {
               </tbody>
             </table>
           </div>
+        </section>
+      )}
+
+      {corpus && (
+        <section className="mt-8" data-testid="overlaps">
+          <div className="mb-3 flex flex-wrap items-center gap-3">
+            <h2 className="text-lg font-semibold">Canibalização</h2>
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              Similaridade mínima
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                value={threshold}
+                data-testid="threshold"
+                onChange={(e) => setThreshold(Number(e.target.value))}
+              />
+              <span className="w-10 font-mono tabular-nums">
+                {threshold.toFixed(2)}
+              </span>
+            </label>
+          </div>
+
+          {report && (
+            <p className="mb-3 text-sm text-gray-700" data-testid="overlaps-summary">
+              {report.pairs.length} par(es) canibalizando · {report.compared}{" "}
+              comparações
+            </p>
+          )}
+
+          {report && report.pairs.length > 0 ? (
+            <ul className="space-y-1">
+              {report.pairs.map((p) => (
+                <li
+                  key={`${p.a}|${p.b}`}
+                  data-testid="overlap-row"
+                  className="flex items-center gap-3 border-b py-1 text-sm"
+                >
+                  <span className="font-mono tabular-nums text-red-600">
+                    {p.score.toFixed(2)}
+                  </span>
+                  <span className="text-blue-700">{p.a}</span>
+                  <span className="text-gray-400">↔</span>
+                  <span className="text-blue-700">{p.b}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            report && (
+              <p className="text-sm text-gray-500">
+                Nenhum par acima do limiar.
+              </p>
+            )
+          )}
         </section>
       )}
     </main>
