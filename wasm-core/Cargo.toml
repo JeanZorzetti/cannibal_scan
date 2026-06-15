@@ -13,5 +13,9 @@ serde = { version = "1", features = ["derive"] }
 serde-wasm-bindgen = "0.6"
 csv = "1.3"
 
-[dev-dependencies]
+# wasm-bindgen-test is ONLY needed for the wasm32 smoke tests (run via `wasm-pack
+# test --node` in Task 6). Scoping it to the wasm32 target keeps it out of the
+# native `cargo test` build, which on the windows-gnu toolchain would otherwise
+# pull in `windows-sys` and fail (incomplete bundled mingw: dlltool can't spawn).
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 wasm-bindgen-test = "0.3"
