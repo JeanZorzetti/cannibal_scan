@@ -34,6 +34,7 @@ export function buildAuditPrompt(clusters: string[][], pages: AuditPage[]): stri
     "You are an SEO content cannibalization auditor.",
     "Each cluster below is a group of pages on the same site competing for the same search intent.",
     "For EACH cluster, produce exactly one recommendation with these fields:",
+    "- cluster: array of ALL URLs in the group (every URL listed in that cluster).",
     "- keep: the single URL to keep as canonical (MUST be one of that cluster's URLs).",
     "- merge_or_redirect: the OTHER cluster URLs to merge into or 301-redirect to the canonical one.",
     "- consolidated_title: one strong <title> for the canonical page.",

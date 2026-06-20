@@ -33,3 +33,28 @@ pub struct OverlapReport {
     pub pairs: Vec<OverlapPair>,
     pub compared: usize,
 }
+
+/// A pair of pages from two *different* sites whose content similarity is high
+/// enough to indicate competitive overlap.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CrossPair {
+    pub a_url: String, // page from site A (your site)
+    pub b_url: String, // page from site B (competitor)
+    pub score: f64,
+}
+
+/// A term/topic that site B covers strongly but site A barely covers.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct GapTerm {
+    pub term: String,
+    pub b_weight: f64,
+    pub a_weight: f64,
+}
+
+/// Result of a cross-site competitive comparison.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ComparisonReport {
+    pub overlaps: Vec<CrossPair>,
+    pub gaps: Vec<GapTerm>,
+    pub compared: usize, // len(a) * len(b)
+}

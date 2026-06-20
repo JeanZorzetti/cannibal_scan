@@ -26,3 +26,22 @@ export interface OverlapReport {
 
 // Slice 3 audit contract (validation source lives in ./audit/schema).
 export type { AuditItem, AuditReport, AuditResponse } from "./audit/schema";
+
+// Cross-site competitive analysis types (mirrored from wasm-core/src/types.rs).
+export interface CrossPair {
+  a_url: string;
+  b_url: string;
+  score: number;
+}
+
+export interface GapTerm {
+  term: string;
+  b_weight: number;
+  a_weight: number;
+}
+
+export interface ComparisonReport {
+  overlaps: CrossPair[];
+  gaps: GapTerm[];
+  compared: number;
+}

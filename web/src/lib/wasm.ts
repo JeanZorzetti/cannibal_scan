@@ -3,8 +3,9 @@
 import init, {
   parse_corpus_json,
   find_overlaps_json,
+  compare_sites_json,
 } from "@/wasm/cannibalscan_wasm_core.js";
-import type { Corpus, OverlapReport } from "./types";
+import type { Corpus, OverlapReport, ComparisonReport } from "./types";
 
 // Instantiate the WASM module once, then reuse it. `init()` (web target) fetches
 // the _bg.wasm asset via import.meta.url, which both Turbopack and webpack emit.
@@ -24,4 +25,17 @@ export async function findOverlaps(
   if (!ready) ready = init();
   await ready;
   return find_overlaps_json(bytes, threshold) as OverlapReport;
+}
+
+// Cross-site competitive analysis: parse two CSV crawls and return bipartite
+// overlap pairs plus content gap terms.
+export async function compareSites(
+  bytesA: Uint8Array,
+  bytesB: Uint8Array,
+  threshold: number,
+  gapTopN: number = 30,
+): Promise<ComparisonReport> {
+  if (!ready) ready = init();
+  await ready;
+  return compare_sites_json(bytesA, bytesB, threshold, gapTopN) as ComparisonReport;
 }

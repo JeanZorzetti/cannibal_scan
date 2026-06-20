@@ -9,7 +9,7 @@ const META_WEIGHT: usize = 1;
 const TEXT_WEIGHT: usize = 1;
 
 /// Lowercase, split on any non-alphanumeric char, drop empty tokens.
-fn tokenize(s: &str) -> impl Iterator<Item = String> + '_ {
+pub fn tokenize(s: &str) -> impl Iterator<Item = String> + '_ {
     s.split(|c: char| !c.is_alphanumeric())
         .filter(|t| !t.is_empty())
         .map(|t| t.to_lowercase())
@@ -17,7 +17,7 @@ fn tokenize(s: &str) -> impl Iterator<Item = String> + '_ {
 
 /// Weighted bag of tokens for one page: each field's tokens are repeated by the
 /// field weight, so title/h1 matches count more than body matches in the TF.
-fn page_tokens(page: &Page) -> Vec<String> {
+pub fn page_tokens(page: &Page) -> Vec<String> {
     let mut bag = Vec::new();
     let weighted = [
         (&page.title, TITLE_WEIGHT),
@@ -36,16 +36,15 @@ fn page_tokens(page: &Page) -> Vec<String> {
 }
 
 /// A page's TF-IDF vector (sparse) plus its precomputed L2 norm.
-struct DocVector {
-    weights: HashMap<String, f64>,
-    norm: f64,
+pub struct DocVector {
+    pub weights: HashMap<String, f64>,
+    pub norm: f64,
 }
 
-fn cosine(a: &DocVector, b: &DocVector) -> f64 {
+pub fn cosine(a: &DocVector, b: &DocVector) -> f64 {
     if a.norm == 0.0 || b.norm == 0.0 {
         return 0.0;
     }
-    // Iterate the smaller map and probe the larger one.
     let (small, large) = if a.weights.len() <= b.weights.len() {
         (a, b)
     } else {
@@ -60,37 +59,20 @@ fn cosine(a: &DocVector, b: &DocVector) -> f64 {
     dot / (a.norm * b.norm)
 }
 
-/// Find pairs of pages whose cosine similarity (over weighted TF-IDF of their
-/// text) is `>= threshold`. Pure O(n²); returns pairs sorted by score desc.
-pub fn find_overlaps(corpus: &Corpus, threshold: f64) -> OverlapReport {
-    let n = corpus.pages.len();
-
-    // 1. Term frequency per page (over the weighted token bag).
-    let tfs: Vec<HashMap<String, f64>> = corpus
-        .pages
-        .iter()
-        .map(|p| {
-            let mut tf: HashMap<String, f64> = HashMap::new();
-            for tok in page_tokens(p) {
-                *tf.entry(tok).or_insert(0.0) += 1.0;
-            }
-            tf
-        })
-        .collect();
-
-    // 2. Document frequency: how many pages contain each term.
-    let mut df: HashMap<&str, usize> = HashMap::new();
-    for tf in &tfs {
-        for term in tf.keys() {
-            *df.entry(term.as_str()).or_insert(0) += 1;
-        }
+/// Compute TF (term frequency over the weighted token bag) for a single page.
+pub fn page_tf(page: &Page) -> HashMap<String, f64> {
+    let mut tf: HashMap<String, f64> = HashMap::new();
+    for tok in page_tokens(page) {
+        *tf.entry(tok).or_insert(0.0) += 1.0;
     }
+    tf
+}
 
-    // 3. Smoothed IDF (sklearn-style) keeps shared terms non-zero even when a
-    //    term appears in every page — exactly the cannibalization case.
+/// Build TF-IDF DocVectors from pre-computed TFs and a DF map.
+/// `n` is the total number of documents the IDF denominator is based on.
+pub fn build_vectors(tfs: &[HashMap<String, f64>], df: &HashMap<String, usize>, n: usize) -> Vec<DocVector> {
     let nf = n as f64;
-    let vectors: Vec<DocVector> = tfs
-        .iter()
+    tfs.iter()
         .map(|tf| {
             let mut weights = HashMap::with_capacity(tf.len());
             let mut norm_sq = 0.0;
@@ -106,9 +88,25 @@ pub fn find_overlaps(corpus: &Corpus, threshold: f64) -> OverlapReport {
                 norm: norm_sq.sqrt(),
             }
         })
-        .collect();
+        .collect()
+}
 
-    // 4. Pairwise cosine over the upper triangle.
+/// Find pairs of pages whose cosine similarity (over weighted TF-IDF of their
+/// text) is `>= threshold`. Pure O(n²); returns pairs sorted by score desc.
+pub fn find_overlaps(corpus: &Corpus, threshold: f64) -> OverlapReport {
+    let n = corpus.pages.len();
+
+    let tfs: Vec<HashMap<String, f64>> = corpus.pages.iter().map(page_tf).collect();
+
+    let mut df: HashMap<String, usize> = HashMap::new();
+    for tf in &tfs {
+        for term in tf.keys() {
+            *df.entry(term.clone()).or_insert(0) += 1;
+        }
+    }
+
+    let vectors = build_vectors(&tfs, &df, n);
+
     let mut pairs = Vec::new();
     for i in 0..n {
         for j in (i + 1)..n {
