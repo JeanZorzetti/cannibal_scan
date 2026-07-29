@@ -1,0 +1,30 @@
+# CannibalScan
+
+> Keyword cannibalization auditor that runs entirely in the browser: drop a crawl CSV and it scores every page pair with TF-IDF cosine similarity in Rust compiled to WebAssembly, then an agent says which URL to keep and which to redirect.
+
+CannibalScan is a free tool by nimblabs (https://nimblabs.com), an independent software lab. The source is public at https://github.com/JeanZorzetti/cannibal_scan.
+
+## What it does
+
+- Reads a crawl exported as CSV (Screaming Frog `internal_html` is the reference format): url, title, meta description, H1, body text.
+- Builds a weighted token bag per page — title ×3, H1 ×2, meta ×1, body ×1 — because cannibalization is driven by intent, and intent lives in the title.
+- Computes TF-IDF vectors and the cosine similarity of every page pair, `n*(n-1)/2` comparisons. The default threshold is 0.70.
+- Clusters the competing pairs and asks a server-side Mastra agent for one recommendation per cluster: which URL to keep, which to merge or 301-redirect, and a consolidated title and meta description.
+- Second mode, `compare_sites`: scores your pages against a competitor's crawl using one shared IDF over the union of both corpora, reporting overlapping pairs and the terms where the competitor is strong and you are absent.
+
+## Privacy
+
+The crawl is never uploaded. Parsing and scoring run locally in WebAssembly. The optional audit step sends only the URL, title, H1 and meta description of pages already flagged as competing — never the body text, never the full crawl. Without an `OPENROUTER_API_KEY` the audit is unavailable and everything else still works.
+
+## Key facts
+
+- Engine: Rust crate `wasm-core` (pure parsing/scoring, tested with `cargo test`) behind a thin `wasm-bindgen` wrapper.
+- App: Next.js App Router + TypeScript + Tailwind; audit agent is Mastra over OpenRouter, default model `google/gemini-2.5-flash`.
+- The WASM package under `web/src/wasm/` is build output and is gitignored: run `wasm-pack build wasm-core --target web --out-dir ../web/src/wasm` before starting the app.
+- On Windows the Rust GNU toolchain is required: `rustup default stable-x86_64-pc-windows-gnu`.
+
+## Links
+
+- Landing page: https://cannibalscan.vercel.app/
+- Source code: https://github.com/JeanZorzetti/cannibal_scan
+- Other nimblabs projects: https://nimblabs.com
