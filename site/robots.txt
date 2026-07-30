@@ -27,4 +27,4 @@ Allow: /
 User-agent: GoogleOther
 Allow: /
 
-Sitemap: https://cannibalscan.vercel.app/sitemap.xml
+Sitemap: https://cannibalscan.nimblabs.com/sitemap.xml

@@ -25,6 +25,6 @@ The crawl is never uploaded. Parsing and scoring run locally in WebAssembly. The
 
 ## Links
 
-- Landing page: https://cannibalscan.vercel.app/
+- Landing page: https://cannibalscan.nimblabs.com/
 - Source code: https://github.com/JeanZorzetti/cannibal_scan
 - Other nimblabs projects: https://nimblabs.com
