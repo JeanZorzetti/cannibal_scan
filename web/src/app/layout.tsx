@@ -33,7 +33,7 @@ export default function RootLayout({
         <nav className="border-b border-gray-200 bg-white">
           <div className="mx-auto max-w-5xl flex items-center gap-6 px-8 py-3">
             <span className="flex items-center gap-2 font-bold text-gray-900">
-              <Logo className="h-5 w-auto text-[#12606E]" />
+              <Logo className="h-8 w-auto text-[#12606E]" />
               CannibalScan
             </span>
             <Link
