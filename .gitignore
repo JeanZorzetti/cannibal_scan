@@ -13,3 +13,8 @@
 # OS
 Thumbs.db
 .DS_Store
+# Prospecção: saída do web/scripts/extract-leads.mjs — dados pessoais de
+# terceiros (telefone/WhatsApp/CNPJ). O repo é público, não vai pra main.
+/leads-bruto.csv
+/leads-dedup.csv
+/_leads.jsonl
