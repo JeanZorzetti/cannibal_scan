@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
+import Logo from "@/components/Logo";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -31,7 +32,10 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <nav className="border-b border-gray-200 bg-white">
           <div className="mx-auto max-w-5xl flex items-center gap-6 px-8 py-3">
-            <span className="font-bold text-gray-900">CannibalScan</span>
+            <span className="flex items-center gap-2 font-bold text-gray-900">
+              <Logo className="h-5 w-auto text-[#12606E]" />
+              CannibalScan
+            </span>
             <Link
               href="/"
               className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
